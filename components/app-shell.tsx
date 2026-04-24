@@ -27,6 +27,7 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
   const [segments, setSegments] = useState<SubtitleSegment[]>([]);
   const [downloadHref, setDownloadHref] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState<string>("subtitle.srt");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -34,6 +35,7 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
     setStatus("idle");
     setSegments([]);
     setDownloadHref(null);
+    setErrorMessage(null);
     setDownloadName(file ? `${file.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt` : "subtitle.srt");
   }
 
@@ -43,6 +45,7 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
     }
 
     setStatus("processing");
+    setErrorMessage(null);
 
     try {
       const result = await processVideoFn(selectedFile);
@@ -52,6 +55,7 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
       setStatus("done");
     } catch {
       setStatus("error");
+      setErrorMessage("Nao foi possivel processar o video. Tente outro arquivo.");
     }
   }
 
@@ -125,13 +129,17 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
                 <p>{item.text}</p>
               </li>
             ))}
-            {selectedFile ? (
-              <li>
-                <time>status</time>
-                <p>Status atual: {statusOrder.find((entry) => entry.key === status)?.label ?? "Aguardando"}</p>
-              </li>
-            ) : null}
           </ol>
+          {selectedFile ? (
+            <p className="status-note">
+              Status atual: {statusOrder.find((entry) => entry.key === status)?.label ?? "Aguardando"}
+            </p>
+          ) : null}
+          {errorMessage ? (
+            <p className="error-banner" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
           {downloadHref ? (
             <a className="primary-button download-link" href={downloadHref} download={downloadName}>
               Baixar SRT

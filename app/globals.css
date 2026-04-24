@@ -137,6 +137,22 @@ h1 {
   color: var(--muted);
 }
 
+.file-picker {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+}
+
+.file-picker input {
+  width: 100%;
+  color: var(--muted);
+}
+
 .primary-button {
   margin-top: 6px;
   border: 0;
@@ -146,6 +162,11 @@ h1 {
   color: #1b1502;
   font-weight: 700;
   cursor: pointer;
+}
+
+.download-link {
+  display: inline-flex;
+  text-decoration: none;
 }
 
 .subtitle-list {
@@ -176,6 +197,21 @@ h1 {
   line-height: 1.4;
 }
 
+.status-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.error-banner {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(214, 59, 82, 0.12);
+  border: 1px solid rgba(214, 59, 82, 0.3);
+  color: #ffb9c4;
+}
+
 @media (max-width: 960px) {
   .page-shell {
     padding: 20px;
@@ -187,5 +223,15 @@ h1 {
 
   .hero-card {
     padding: 24px;
+  }
+
+  .dropzone {
+    min-height: 0;
+  }
+
+  .primary-button,
+  .download-link,
+  .file-picker {
+    width: 100%;
   }
 }
