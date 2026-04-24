@@ -3,17 +3,15 @@ export async function loadFfmpeg() {
     throw new Error("ffmpeg.wasm can only load in the browser.");
   }
 
-  const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
-    import("@ffmpeg/ffmpeg"),
-    import("@ffmpeg/util"),
-  ]);
+  const { FFmpeg } = await import("@ffmpeg/ffmpeg");
 
   const ffmpeg = new FFmpeg();
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
+  const coreURL = new URL("/ffmpeg/ffmpeg-core.js", window.location.origin).toString();
+  const wasmURL = new URL("/ffmpeg/ffmpeg-core.wasm", window.location.origin).toString();
 
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+    coreURL,
+    wasmURL,
   });
 
   return ffmpeg;

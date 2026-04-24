@@ -11,10 +11,15 @@ type TranscriptionResult = {
 
 export async function transcribeAudio(file: File): Promise<TranscriptChunk[]> {
   const transcriber = await loadTranscriber();
-  const audioUrl = URL.createObjectURL(file);
+  const audioContext = new AudioContext();
 
   try {
-    const result = (await transcriber(audioUrl, {
+    const audioBuffer = await audioContext.decodeAudioData(await file.arrayBuffer());
+    const channelData = audioBuffer.numberOfChannels === 1
+      ? audioBuffer.getChannelData(0)
+      : mixToMono(audioBuffer);
+
+    const result = (await transcriber(channelData, {
       return_timestamps: true,
     })) as TranscriptionResult;
 
@@ -29,6 +34,20 @@ export async function transcribeAudio(file: File): Promise<TranscriptChunk[]> {
       })
       .filter((chunk) => chunk.text.length > 0);
   } finally {
-    URL.revokeObjectURL(audioUrl);
+    await audioContext.close();
   }
+}
+
+function mixToMono(audioBuffer: AudioBuffer): Float32Array {
+  const length = audioBuffer.length;
+  const mono = new Float32Array(length);
+
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+    const data = audioBuffer.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      mono[i] += data[i] / audioBuffer.numberOfChannels;
+    }
+  }
+
+  return mono;
 }

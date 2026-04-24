@@ -27,12 +27,27 @@ export async function processVideo(file: File, deps: ProcessVideoDeps = {}): Pro
 
   try {
     audioFile = await extractAudio(file);
-  } catch {
-    const normalizedFile = await normalizeVideo(file);
-    audioFile = await extractAudio(normalizedFile);
+  } catch (extractError) {
+    try {
+      const normalizedFile = await normalizeVideo(file);
+      audioFile = await extractAudio(normalizedFile);
+    } catch (normalizeError) {
+      const extractMessage = extractError instanceof Error ? extractError.message : String(extractError);
+      const normalizeMessage = normalizeError instanceof Error ? normalizeError.message : String(normalizeError);
+      throw new Error(
+        `Nao foi possivel extrair audio do video. Primeiro erro: ${extractMessage}. Fallback erro: ${normalizeMessage}`,
+      );
+    }
   }
 
-  const transcriptChunks = await transcribeAudio(audioFile);
+  let transcriptChunks: TranscriptChunk[];
+
+  try {
+    transcriptChunks = await transcribeAudio(audioFile);
+  } catch (transcribeError) {
+    throw new Error("Nao foi possivel transcrever o audio.", { cause: transcribeError });
+  }
+
   const segments = segmentTranscript(transcriptChunks);
 
   return {

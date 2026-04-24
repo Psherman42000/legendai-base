@@ -53,9 +53,11 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
       setDownloadName(`${selectedFile.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt`);
       setDownloadHref(`data:application/x-subrip;charset=utf-8,${encodeURIComponent(result.srt)}`);
       setStatus("done");
-    } catch {
+    } catch (error) {
+      console.error("processVideo failed", error, error instanceof Error ? error.message : String(error));
       setStatus("error");
-      setErrorMessage("Nao foi possivel processar o video. Tente outro arquivo.");
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage(message || "Nao foi possivel processar o video. Tente outro arquivo.");
     }
   }
 
