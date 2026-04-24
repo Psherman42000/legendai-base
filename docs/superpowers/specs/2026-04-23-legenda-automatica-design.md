@@ -1,25 +1,24 @@
-# Legenda Automática MVP - Design
+# Legenda Automatica MVP - Design
 
 ## Objetivo
 
-Construir um MVP funcional para gerar legendas sincronizadas a partir de vídeo enviado pelo usuário.
+Construir um MVP funcional para gerar legendas sincronizadas a partir de video enviado pelo usuario, sem custo de infra alem do plano gratis da Vercel.
 
 Fluxo principal:
 
-1. Usuário faz upload de vídeo.
-2. Backend valida o arquivo e normaliza mídia com `ffmpeg` quando necessário.
-3. Sistema extrai áudio.
-4. Sistema transcreve áudio com timestamps.
-5. Sistema quebra texto em frases curtas.
-6. Usuário visualiza preview simples.
-7. Usuário baixa `SRT`.
+1. Usuario faz upload de video.
+2. App roda conversao e extracao localmente no navegador.
+3. App transcreve audio com timestamps.
+4. App quebra texto em frases curtas.
+5. Usuario visualiza preview simples.
+6. Usuario baixa `SRT`.
 
 Escopo do MVP:
 
-- Upload de vídeo em formatos comuns.
-- Conversão automática para formato interno quando o arquivo original não for `mp4`.
-- Transcrição automática.
-- Geração de legenda sincronizada em `SRT`.
+- Upload de video em formatos comuns.
+- Conversao automatica para formato interno quando o arquivo original nao for `mp4`.
+- Transcricao automatica sem API paga.
+- Geracao de legenda sincronizada em `SRT`.
 - Preview simples da legenda gerada.
 - Download do arquivo `SRT`.
 
@@ -29,15 +28,15 @@ Fora do MVP:
 - Dashboard.
 - Multi estilo.
 - Karaoke palavra por palavra.
-- Efeitos visuais avançados.
-- Edição colaborativa.
-- Download de vídeo queimado com legenda, salvo se sobrar tempo depois do fluxo `SRT`.
+- Efeitos visuais avancados.
+- Edicao colaborativa.
+- Download de video queimado com legenda.
 
 ## Requisitos de Produto
 
 ### Formatos aceitos
 
-O upload deve aceitar os formatos mais comuns de vídeo, incluindo:
+O upload deve aceitar os formatos mais comuns de video, incluindo:
 
 - `mp4`
 - `m4v`
@@ -46,205 +45,207 @@ O upload deve aceitar os formatos mais comuns de vídeo, incluindo:
 - `webm`
 - `avi`
 
-O sistema não deve depender do usuário converter o arquivo antes do upload. Se o contêiner ou codec original não for ideal para o pipeline, o backend deve tentar normalizar o arquivo com `ffmpeg`.
+O sistema nao deve depender do usuario converter o arquivo antes do upload. Se o container ou codec original nao for ideal para o pipeline, o app deve tentar normalizar o arquivo no navegador.
 
-### Comportamento de conversão
+### Comportamento de conversao
 
-- Primeiro, o backend tenta extrair áudio diretamente do arquivo enviado.
-- Se a extração direta falhar por causa de contêiner ou codec, o sistema converte o vídeo para `mp4` interno e repete a extração.
-- Se ainda assim não for possível processar, o app retorna erro claro dizendo que o vídeo é inválido, corrompido ou incompatível.
+- Primeiro, o app tenta extrair audio diretamente do arquivo enviado.
+- Se a extracao direta falhar por causa de container ou codec, o app converte o video para `mp4` interno e repete a extracao.
+- Se ainda assim nao for possivel processar, o app retorna erro claro dizendo que o video e invalido, corrompido ou incompativel.
 
-### Transcrição
+### Transcricao
 
-O sistema precisa produzir transcrição com timestamps suficientes para gerar legendas sincronizadas.
+O sistema precisa produzir transcricao com timestamps suficientes para gerar legendas sincronizadas.
 
-Para o MVP, a prioridade é confiabilidade e simplicidade. A implementação deve permitir trocar o motor de transcrição sem mudar o fluxo principal.
+Para o MVP gratuito, a prioridade e confiabilidade e simplicidade. A implementacao deve usar um modelo Whisper pequeno em JavaScript/WASM e permitir trocar o modelo sem mudar o fluxo principal.
 
 ### Legenda
 
 - As legendas devem ser quebradas em frases curtas.
 - Deve existir apenas 1 estilo de legenda no MVP.
-- O sistema deve gerar `SRT` como saída principal.
+- O sistema deve gerar `SRT` como saida principal.
 
 ## Arquitetura
 
 ### Stack sugerido
 
 - Frontend: `Next.js`
-- API: `Next.js` route handlers ou server actions leves, desde que upload e status fiquem claros
-- Fila: `Redis` + `BullMQ`
-- Worker: `Node.js`
-- Mídia: `ffmpeg`
-- Transcrição: `OpenAI audio transcription API`
-- Storage temporário: disco local ou bucket simples, desde que com expiração
+- Hosting: `Vercel Hobby`
+- Midia: `ffmpeg.wasm`
+- Transcricao: `Transformers.js` com um modelo Whisper pequeno
+- Storage: somente navegador, sem backend de arquivos
+- Backend: nao usar no MVP gratuito
 
 Motivo:
 
-- reduz número de serviços
-- mantém caminho curto para MVP
-- separa upload HTTP de processamento pesado
+- custo zero
+- cabe no uso gratuito da Vercel
+- evita API paga e servidor de midia
+- mantem o produto funcional sem infra extra
 
 ### Frontend
 
-Aplicação web simples, com uma tela principal contendo:
+Aplicacao web simples, com uma tela principal contendo:
 
 - campo de upload
 - estado do processamento
 - preview do texto segmentado
-- botão de download do `SRT`
+- botao de download do `SRT`
 
-Frontend não deve conter lógica pesada de mídia.
+Frontend nao deve conter logica pesada de midia, mas deve orquestrar o processamento local e mostrar progresso.
 
 ### Backend API
 
-Responsável por:
-
-- receber upload
-- salvar arquivo temporário
-- validar tipo e tamanho
-- enfileirar processamento
-- expor status do job
-- expor resultado final
-
-### Worker de mídia
-
-Responsável por:
-
-- normalizar o arquivo com `ffmpeg`
-- extrair áudio
-- executar transcrição
-- segmentar texto em frases curtas
-- gerar `SRT`
-- persistir resultado temporário
-
-### Motor de transcrição
-
-O MVP deve usar uma única integração de transcrição, via `OpenAI audio transcription API`, encapsulada por uma camada própria.
+Nao entra no MVP gratuito.
 
 Motivo:
 
-- entrega rápida
-- timestamps confiáveis
+- nao ha budget para worker nem fila gerenciada
+- processamento pesado em backend nao combina com Vercel free para videos
+- o fluxo pode ser feito inteiro no navegador
+
+### Worker de midia
+
+Nao entra no MVP gratuito.
+
+Responsavel por:
+
+- normalizar o arquivo com `ffmpeg.wasm`
+- extrair audio
+- executar transcricao local
+- segmentar texto em frases curtas
+- gerar `SRT`
+- manter resultado em memoria ou `Blob` ate download
+
+### Motor de transcricao
+
+O MVP deve usar uma unica integracao de transcricao local, via `Transformers.js` com Whisper pequeno, encapsulada por uma camada propria.
+
+Motivo:
+
+- custo zero
+- roda no navegador
 - facilita troca futura sem reescrever o fluxo
 
-Se o provedor mudar depois, só a camada de transcrição troca.
+Se o modelo mudar depois, so a camada de transcricao troca.
 
-### Armazenamento temporário
+### Armazenamento temporario
 
-Usar storage temporário para:
+Nao usar storage externo no MVP gratuito.
 
-- arquivo original
-- arquivo normalizado
-- áudio extraído
-- resultado da transcrição
-- `SRT` final
+Usar apenas:
 
-Os artefatos podem expirar depois de um período curto. O MVP não precisa de retenção longa.
+- memoria da pagina
+- `File`/`Blob`
+- `URL.createObjectURL` para preview e download
+
+Os artefatos podem desaparecer quando a aba fechar.
 
 ## Fluxo de Dados
 
-1. Usuário envia vídeo.
-2. API grava upload em storage temporário.
-3. API cria job de processamento.
-4. Worker tenta extrair áudio.
-5. Se necessário, worker converte vídeo para `mp4` e tenta novamente.
-6. Worker transcreve áudio com timestamps.
-7. Worker gera segmentos curtos.
-8. Worker monta `SRT`.
-9. Frontend consulta status do job.
-10. Quando pronto, usuário vê preview e baixa o `SRT`.
+1. Usuario envia video.
+2. App le arquivo direto no navegador.
+3. `ffmpeg.wasm` tenta extrair audio.
+4. Se necessario, `ffmpeg.wasm` converte video para `mp4` e tenta novamente.
+5. `Transformers.js` transcreve audio com timestamps.
+6. App gera segmentos curtos.
+7. App monta `SRT`.
+8. Usuario ve preview e baixa o `SRT`.
 
-## Decisões Técnicas
+## Decisoes Tecnicas
 
-### Conversão de vídeo
+### Conversao de video
 
-`ffmpeg` será usado como camada padrão de normalização.
+`ffmpeg.wasm` sera usado como camada padrao de normalizacao.
 
 Motivo:
 
 - cobre muitos formatos conhecidos
 - reduz erro de compatibilidade
-- evita exigir que usuário entregue apenas `mp4`
+- evita exigir que usuario entregue apenas `mp4`
+- funciona sem servidor pago
 
-### Processamento assíncrono
+### Processamento assincrono
 
-O processamento de mídia deve ser assíncrono.
-
-Motivo:
-
-- vídeos podem ser grandes
-- transcrição e conversão podem levar tempo
-- evita travar request HTTP
-
-### Segmentação de fala
-
-A segmentação em frases curtas deve acontecer depois da transcrição.
+O processamento de midia deve ser assincrono dentro do navegador.
 
 Motivo:
 
-- simplifica o motor de transcrição
-- permite ajustar regra de quebra sem refazer pipeline inteiro
+- videos podem ser grandes
+- transcricao e conversao podem levar tempo
+- evita travar a interface
+- nao depende de request HTTP
 
-## Erros e Resiliência
+### Segmentacao de fala
+
+A segmentacao em frases curtas deve acontecer depois da transcricao.
+
+Motivo:
+
+- simplifica o motor de transcricao
+- permite ajustar regra de quebra sem refazer o fluxo inteiro
+
+## Erros e Resiliencia
 
 ### Casos esperados
 
-- upload sem vídeo
+- upload sem video
 - arquivo corrompido
-- formato não suportado por `ffmpeg`
-- falha de conversão
-- falha de transcrição
-- job expirado antes do download
+- formato nao suportado por `ffmpeg.wasm`
+- falha de conversao
+- falha de transcricao
+- aba fechada antes do download
 
 ### Regras de erro
 
-- Cada job deve ter status explícito: `queued`, `processing`, `done`, `error`.
-- Mensagem de erro deve ser legível para usuário, sem stack trace.
-- Falhas de conversão não devem marcar o sistema inteiro como indisponível.
+- Cada processamento deve ter status explicito: `idle`, `loading-model`, `processing`, `done`, `error`.
+- Mensagem de erro deve ser legivel para usuario, sem stack trace.
+- Falhas de conversao nao devem quebrar a sessao inteira.
 
-### Recuperação
+### Recuperacao
 
-- Se a extração direta falhar, tentar conversão.
-- Se transcrição falhar, registrar erro do job e permitir novo envio.
-- Se o arquivo temporário expirar, orientar usuário a reenviar.
+- Se a extracao direta falhar, tentar conversao.
+- Se transcricao falhar, permitir novo envio.
+- Se a aba for fechada, orientar usuario a reenviar.
 
 ## Preview
 
 Preview do MVP deve ser simples:
 
 - lista de blocos de legenda
-- timestamps visíveis
-- texto editável opcional, se isso não atrasar o núcleo do fluxo
+- timestamps visiveis
+- texto editavel opcional, se isso nao atrasar o nucleo do fluxo
 
-Se a edição atrasar a entrega, o MVP pode começar só com preview de leitura.
+Se a edicao atrasar a entrega, o MVP pode comecar so com preview de leitura.
 
 ## Testes
 
-### Backend
+### Frontend
 
-- aceitar formatos comuns de vídeo
-- converter arquivos não-`mp4` via `ffmpeg`
-- extrair áudio com sucesso em arquivos válidos
+- aceitar formatos comuns de video
+- converter arquivos nao-`mp4` via `ffmpeg.wasm`
+- extrair audio com sucesso em arquivos validos
 - falhar com erro claro em arquivo corrompido
-- gerar `SRT` com timestamps válidos
+- gerar `SRT` com timestamps validos
 
 ### Fluxo
 
-- upload -> processamento -> preview -> download
-- timeout e erro de job
+- upload -> processamento local -> preview -> download
+- falha de carregamento de modelo
 
 ### Contratos
 
-- status do job deve ser estável
-- arquivo `SRT` deve respeitar formato padrão
+- status do processamento deve ser estavel
+- arquivo `SRT` deve respeitar formato padrao
 
-## Critério de Sucesso
+## Criterio de Sucesso
 
-O MVP é bem-sucedido se o usuário conseguir:
+O MVP e bem-sucedido se o usuario conseguir:
 
-- enviar um vídeo em formato comum
+- enviar um video em formato comum
 - aguardar o processamento
 - receber legendas sincronizadas
 - baixar um `SRT` funcional
 
-O app deve aceitar formatos além de `mp4` sem exigir conversão manual.
+O app deve aceitar formatos alem de `mp4` sem exigir conversao manual.
+O app nao deve depender de servico pago para transcricao ou conversao.
