@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { acceptedVideoExtensions } from "@/lib/media/accepted-formats";
+import { processVideo as defaultProcessVideo } from "@/lib/media/process-video";
+import { formatSrtTime } from "@/lib/subtitles/time";
+import type { SubtitleSegment } from "@/lib/subtitles/types";
 
 type JobStatus = "idle" | "loading-model" | "processing" | "done" | "error";
+type ProcessVideoFn = typeof defaultProcessVideo;
 
 const statusOrder: Array<{ key: JobStatus; label: string }> = [
   { key: "idle", label: "Aguardando" },
@@ -13,15 +17,58 @@ const statusOrder: Array<{ key: JobStatus; label: string }> = [
   { key: "error", label: "Erro" },
 ];
 
-export function AppShell() {
+type AppShellProps = {
+  processVideoFn?: ProcessVideoFn;
+};
+
+export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps) {
   const [status, setStatus] = useState<JobStatus>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [segments, setSegments] = useState<SubtitleSegment[]>([]);
+  const [downloadHref, setDownloadHref] = useState<string | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("subtitle.srt");
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
-    setStatus(file ? "idle" : "idle");
+    setStatus("idle");
+    setSegments([]);
+    setDownloadHref(null);
+    setDownloadName(file ? `${file.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt` : "subtitle.srt");
   }
+
+  async function handleProcessClick() {
+    if (!selectedFile) {
+      return;
+    }
+
+    setStatus("processing");
+
+    try {
+      const result = await processVideoFn(selectedFile);
+      setSegments(result.segments);
+      setDownloadName(`${selectedFile.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt`);
+      setDownloadHref(`data:application/x-subrip;charset=utf-8,${encodeURIComponent(result.srt)}`);
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const previewItems = useMemo(() => {
+    if (segments.length > 0) {
+      return segments;
+    }
+
+    return [
+      {
+        id: 0,
+        startMs: 0,
+        endMs: 0,
+        text: selectedFile ? "Processando..." : "Carregue um video para comecar",
+      },
+    ];
+  }, [segments, selectedFile]);
 
   return (
     <main className="page-shell">
@@ -58,7 +105,7 @@ export function AppShell() {
                 onChange={handleFileChange}
               />
             </label>
-            <button type="button" className="primary-button">
+            <button type="button" className="primary-button" onClick={handleProcessClick}>
               Enviar video
             </button>
             {selectedFile ? <p className="file-name">{selectedFile.name}</p> : null}
@@ -72,26 +119,24 @@ export function AppShell() {
           </div>
 
           <ol className="subtitle-list">
-            {selectedFile ? (
-              <>
-                <li>
-                  <time>00:00:01,240</time>
-                  <p>Arquivo selecionado: {selectedFile.name}</p>
-                </li>
-                {statusOrder.map((item, index) => (
-                  <li key={item.key}>
-                    <time>{String(index + 1).padStart(2, "0")} stage</time>
-                    <p>{item.label}</p>
-                  </li>
-                ))}
-              </>
-            ) : (
-              <li>
-                <time>00:00:00,000</time>
-                <p>Carregue um video para comecar</p>
+            {previewItems.map((item) => (
+              <li key={item.id}>
+                <time>{formatSrtTime(item.startMs)}</time>
+                <p>{item.text}</p>
               </li>
-            )}
+            ))}
+            {selectedFile ? (
+              <li>
+                <time>status</time>
+                <p>Status atual: {statusOrder.find((entry) => entry.key === status)?.label ?? "Aguardando"}</p>
+              </li>
+            ) : null}
           </ol>
+          {downloadHref ? (
+            <a className="primary-button download-link" href={downloadHref} download={downloadName}>
+              Baixar SRT
+            </a>
+          ) : null}
         </article>
       </section>
     </main>
