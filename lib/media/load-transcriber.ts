@@ -10,7 +10,7 @@ async function createTranscriber() {
   const { pipeline, env } = await import("@xenova/transformers");
   env.allowLocalModels = false;
 
-  return pipeline("automatic-speech-recognition", "Xenova/whisper-tiny.en", {
+  return pipeline("automatic-speech-recognition", "Xenova/whisper-tiny", {
     progress_callback: () => undefined,
   });
 }

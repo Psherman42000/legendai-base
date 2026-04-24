@@ -164,6 +164,17 @@ h1 {
   cursor: pointer;
 }
 
+.secondary-button {
+  margin-top: 6px;
+  border-radius: 999px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .download-link {
   display: inline-flex;
   text-decoration: none;
@@ -230,6 +241,7 @@ h1 {
   }
 
   .primary-button,
+  .secondary-button,
   .download-link,
   .file-picker {
     width: 100%;

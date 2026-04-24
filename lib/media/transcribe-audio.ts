@@ -1,5 +1,6 @@
 import type { TranscriptChunk } from "@/lib/subtitles/types";
 import { loadTranscriber } from "@/lib/media/load-transcriber";
+import { readFileBytes } from "@/lib/media/read-file-bytes";
 
 type TranscriptionResult = {
   text?: string;
@@ -14,13 +15,17 @@ export async function transcribeAudio(file: File): Promise<TranscriptChunk[]> {
   const audioContext = new AudioContext();
 
   try {
-    const audioBuffer = await audioContext.decodeAudioData(await file.arrayBuffer());
+    const audioBuffer = await audioContext.decodeAudioData(await readFileBytes(file));
     const channelData = audioBuffer.numberOfChannels === 1
       ? audioBuffer.getChannelData(0)
       : mixToMono(audioBuffer);
 
     const result = (await transcriber(channelData, {
       return_timestamps: true,
+      chunk_length_s: 30,
+      stride_length_s: 5,
+      language: "portuguese",
+      task: "transcribe",
     })) as TranscriptionResult;
 
     return (result.chunks ?? [])

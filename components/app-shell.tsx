@@ -2,31 +2,38 @@
 
 import React, { useMemo, useState } from "react";
 import { acceptedVideoExtensions } from "@/lib/media/accepted-formats";
+import { burnVideoWithSubtitles as defaultBurnVideoWithSubtitles } from "@/lib/media/burn-video";
 import { processVideo as defaultProcessVideo } from "@/lib/media/process-video";
 import { formatSrtTime } from "@/lib/subtitles/time";
 import type { SubtitleSegment } from "@/lib/subtitles/types";
 
-type JobStatus = "idle" | "loading-model" | "processing" | "done" | "error";
+type JobStatus = "idle" | "loading-model" | "processing" | "burning-video" | "done" | "error";
 type ProcessVideoFn = typeof defaultProcessVideo;
+type BurnVideoFn = typeof defaultBurnVideoWithSubtitles;
 
 const statusOrder: Array<{ key: JobStatus; label: string }> = [
   { key: "idle", label: "Aguardando" },
   { key: "loading-model", label: "Carregando modelo" },
   { key: "processing", label: "Processando" },
+  { key: "burning-video", label: "Gerando vídeo" },
   { key: "done", label: "Pronto" },
   { key: "error", label: "Erro" },
 ];
 
 type AppShellProps = {
   processVideoFn?: ProcessVideoFn;
+  burnVideoFn?: BurnVideoFn;
 };
 
-export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps) {
+export function AppShell({ processVideoFn = defaultProcessVideo, burnVideoFn = defaultBurnVideoWithSubtitles }: AppShellProps) {
   const [status, setStatus] = useState<JobStatus>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [segments, setSegments] = useState<SubtitleSegment[]>([]);
+  const [srtContent, setSrtContent] = useState<string | null>(null);
   const [downloadHref, setDownloadHref] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState<string>("subtitle.srt");
+  const [videoDownloadHref, setVideoDownloadHref] = useState<string | null>(null);
+  const [videoDownloadName, setVideoDownloadName] = useState<string>("legendado.mp4");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -34,9 +41,12 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
     setSelectedFile(file);
     setStatus("idle");
     setSegments([]);
+    setSrtContent(null);
     setDownloadHref(null);
+    setVideoDownloadHref(null);
     setErrorMessage(null);
     setDownloadName(file ? `${file.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt` : "subtitle.srt");
+    setVideoDownloadName(file ? `${file.name.replace(/\.[^.]+$/, "") || "subtitle"}-legendado.mp4` : "legendado.mp4");
   }
 
   async function handleProcessClick() {
@@ -50,14 +60,37 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
     try {
       const result = await processVideoFn(selectedFile);
       setSegments(result.segments);
+      setSrtContent(result.srt);
       setDownloadName(`${selectedFile.name.replace(/\.[^.]+$/, "") || "subtitle"}.srt`);
       setDownloadHref(`data:application/x-subrip;charset=utf-8,${encodeURIComponent(result.srt)}`);
+      setVideoDownloadHref(null);
       setStatus("done");
     } catch (error) {
       console.error("processVideo failed", error, error instanceof Error ? error.message : String(error));
       setStatus("error");
       const message = error instanceof Error ? error.message : String(error);
       setErrorMessage(message || "Nao foi possivel processar o video. Tente outro arquivo.");
+    }
+  }
+
+  async function handleBurnVideoClick() {
+    if (!selectedFile || !srtContent) {
+      return;
+    }
+
+    setStatus("burning-video");
+    setErrorMessage(null);
+
+    try {
+      const burnedVideo = await burnVideoFn(selectedFile, srtContent);
+      setVideoDownloadName(`${selectedFile.name.replace(/\.[^.]+$/, "") || "subtitle"}-legendado.mp4`);
+      setVideoDownloadHref(URL.createObjectURL(burnedVideo));
+      setStatus("done");
+    } catch (error) {
+      console.error("burnVideo failed", error, error instanceof Error ? error.message : String(error));
+      setStatus("error");
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage(message || "Nao foi possivel gerar o video legendado. Tente outro arquivo.");
     }
   }
 
@@ -145,6 +178,16 @@ export function AppShell({ processVideoFn = defaultProcessVideo }: AppShellProps
           {downloadHref ? (
             <a className="primary-button download-link" href={downloadHref} download={downloadName}>
               Baixar SRT
+            </a>
+          ) : null}
+          {srtContent ? (
+            <button type="button" className="secondary-button download-link" onClick={handleBurnVideoClick}>
+              Baixar vídeo com legenda
+            </button>
+          ) : null}
+          {videoDownloadHref ? (
+            <a className="primary-button download-link" href={videoDownloadHref} download={videoDownloadName}>
+              Baixar vídeo legendado
             </a>
           ) : null}
         </article>
